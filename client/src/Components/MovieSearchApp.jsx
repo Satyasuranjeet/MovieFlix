@@ -1,7 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, X, Volume2, Settings, Download, Maximize2 } from 'lucide-react';
 
-// MovieCard Component remains the same
+// Server Wake-up Loading Screen Component
+const ServerWakeupScreen = () => (
+  <div className="fixed inset-0 bg-[#1E1E1E] flex flex-col items-center justify-center z-50">
+    <div className="w-24 h-24 mb-8 relative">
+      <div className="absolute inset-0 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="absolute inset-2 border-4 border-teal-400 border-t-transparent rounded-full animate-spin-slow"></div>
+    </div>
+    <h2 className="text-2xl font-bold text-white mb-4">Starting up MovieFlix</h2>
+    <p className="text-gray-400 text-center max-w-md px-4">
+      Our server is waking up from hibernation. This might take up to 30 seconds. 
+      Thank you for your patience!
+    </p>
+  </div>
+);
+
+// MovieCard Component
 const MovieCard = ({ movie, onClick, onDownload }) => (
   <div 
     className="relative group cursor-pointer rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-xl"
@@ -30,7 +45,7 @@ const MovieCard = ({ movie, onClick, onDownload }) => (
   </div>
 );
 
-// VideoPlayer Component remains the same
+// VideoPlayer Component
 const VideoPlayer = ({ url }) => (
   <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
     <iframe
@@ -45,7 +60,7 @@ const VideoPlayer = ({ url }) => (
   </div>
 );
 
-// Modal Component remains the same
+// Modal Component
 const Modal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
 
@@ -78,10 +93,29 @@ const MovieSearchApp = () => {
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isServerReady, setIsServerReady] = useState(false);
 
   const categories = [
     'comedy', 'action', 'animation', 'cartoon', 'sci-fi', 'fantasy', 'history'
   ];
+
+  // Check server status on initial load
+  useEffect(() => {
+    const checkServerStatus = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:5000/health');
+        if (response.ok) {
+          setIsServerReady(true);
+        } else {
+          setTimeout(checkServerStatus, 2000);
+        }
+      } catch (error) {
+        setTimeout(checkServerStatus, 2000);
+      }
+    };
+
+    checkServerStatus();
+  }, []);
 
   const handleDownload = async (movie) => {
     try {
@@ -109,7 +143,6 @@ const MovieSearchApp = () => {
     try {
       const params = new URLSearchParams();
       
-      // Only add the parameter that has a value
       if (searchQuery.trim()) {
         params.append('name', searchQuery.trim());
       }
@@ -117,37 +150,28 @@ const MovieSearchApp = () => {
         params.append('category', category);
       }
 
-      // Check if at least one parameter is provided
-      if (!searchQuery.trim() && !category) {
-        setError('Please enter a search term or select a category');
-        setLoading(false);
-        return;
-      }
-
       const response = await fetch(`http://127.0.0.1:5000/search_movie?${params}`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          setMovies([]);
-          return;
-        }
-        throw new Error('Network response was not ok');
-      }
-
       const data = await response.json();
       
-      if (data.movies) {
-        setMovies(data.movies);
-      } else {
+      if (data.error) {
+        setError(data.error);
         setMovies([]);
+      } else {
+        setMovies(data.movies || []);
       }
     } catch (err) {
       setError('Failed to fetch movies. Please try again.');
+      setMovies([]);
       console.error('Error:', err);
     } finally {
       setLoading(false);
     }
   };    
+
+  // Show loading screen if server is not ready
+  if (!isServerReady) {
+    return <ServerWakeupScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-[#1E1E1E]">
@@ -174,7 +198,12 @@ const MovieSearchApp = () => {
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  setCategory(''); // Clear category when searching by name
+                  setCategory('');
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    fetchMovies();
+                  }
                 }}
                 className="w-full px-4 py-2 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
               />
@@ -185,7 +214,7 @@ const MovieSearchApp = () => {
             value={category}
             onChange={(e) => {
               setCategory(e.target.value);
-              setSearchQuery(''); // Clear search query when selecting category
+              setSearchQuery('');
             }}
             className="w-full md:w-48 px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:ring-2 focus:ring-teal-500 focus:outline-none"
           >
