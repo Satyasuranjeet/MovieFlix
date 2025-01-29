@@ -103,7 +103,7 @@ const MovieSearchApp = () => {
   useEffect(() => {
     const checkServerStatus = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:5000/health');
+        const response = await fetch('https://movieflix-dknn.onrender.com/health');
         if (response.ok) {
           setIsServerReady(true);
         } else {
