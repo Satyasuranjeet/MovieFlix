@@ -150,7 +150,7 @@ const MovieSearchApp = () => {
         params.append('category', category);
       }
 
-      const response = await fetch(`http://127.0.0.1:5000/search_movie?${params}`);
+      const response = await fetch(`https://movieflix-dknn.onrender.com/search_movie?${params}`);
       const data = await response.json();
       
       if (data.error) {
